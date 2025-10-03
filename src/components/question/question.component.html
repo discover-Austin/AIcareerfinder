@@ -1,0 +1,75 @@
+<div class="w-full max-w-2xl mx-auto">
+  <h2 class="text-2xl md:text-3xl font-bold text-center text-slate-800 dark:text-slate-100 mb-8">
+    {{ question().text }}
+  </h2>
+
+  @switch (question().type) {
+    @case ('multiple-choice') {
+      <div class="flex flex-wrap justify-center gap-4">
+        @for (option of question().options; track option.text) {
+          <button
+            (click)="onOptionSelect(option)"
+            [class]="{
+              'ring-4 ring-indigo-500/70 dark:ring-indigo-400/70 bg-indigo-50 dark:bg-indigo-900/50 scale-105 shadow-lg': selectedOption() === option,
+              'bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:-translate-y-1': selectedOption() !== option
+            }"
+            class="w-full md:w-5/12 p-6 rounded-xl border border-slate-200 dark:border-slate-700 text-left text-slate-700 dark:text-slate-200 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-slate-900 shadow-md"
+          >
+            <span class="text-lg font-medium">{{ option.text }}</span>
+          </button>
+        }
+      </div>
+    }
+
+    @case ('image-choice') {
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        @for (option of question().options; track option.text) {
+          <button
+            (click)="onOptionSelect(option)"
+            [class]="{
+              'ring-4 ring-indigo-500 scale-105 shadow-xl': selectedOption() === option,
+              'ring-2 ring-transparent hover:-translate-y-1': selectedOption() !== option
+            }"
+            class="rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-left transition-all duration-200 ease-in-out focus:outline-none focus:ring-offset-2 dark:focus:ring-offset-slate-900 shadow-md"
+          >
+            <img [src]="option.imageUrl" alt="{{ option.text }}" class="w-full h-48 object-cover">
+            <p class="p-4 text-slate-700 dark:text-slate-200 font-medium">{{ option.text }}</p>
+          </button>
+        }
+      </div>
+    }
+
+    @case ('slider') {
+      <div class="flex flex-col items-center">
+        <div class="w-full flex justify-between text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 px-1">
+          <span>{{ question().labels?.[0] || 'Disagree' }}</span>
+          <span>{{ question().labels?.[1] || 'Agree' }}</span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          [value]="sliderValue()"
+          (input)="onSliderChange($event)"
+          (change)="onSliderRelease($event)"
+          class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer"
+        >
+        <div class="mt-4 text-lg font-semibold text-indigo-600 dark:text-indigo-400 opacity-60">
+          Move the slider to where you fit best
+        </div>
+      </div>
+    }
+
+    @case ('text-input') {
+       <div class="flex flex-col items-center">
+         <textarea 
+          [value]="textInputValue()"
+          (input)="onTextInput($event)"
+          rows="3"
+          class="w-full p-4 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out"
+          placeholder="Type your answer here..."
+        ></textarea>
+       </div>
+    }
+  }
+</div>

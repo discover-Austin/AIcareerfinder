@@ -1,0 +1,484 @@
+<div class="w-full max-w-6xl mx-auto text-center">
+  @if (isLoading()) {
+    <div class="flex flex-col items-center justify-center gap-6 p-8 min-h-[400px]">
+      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600"></div>
+      <h2 class="text-2xl font-semibold text-slate-700 dark:text-slate-200 transition-opacity duration-500">{{ currentLoadingMessage() }}</h2>
+      <p class="text-slate-500 dark:text-slate-400 max-w-md">Our AI is crafting your comprehensive personality profile and career analysis. This may take a moment.</p>
+    </div>
+  }
+
+  @if (isSuccess() && analysis(); as an) {
+    <div class="flex flex-col items-center">
+      <h1 class="text-3xl md:text-4xl font-bold text-slate-800 dark:text-slate-100 mb-4">Your Personality Deep Dive</h1>
+      <p class="mb-12 text-slate-600 dark:text-slate-300 max-w-3xl">Based on your answers, we've generated a detailed analysis of your personality and suggested career paths that align with your unique traits.</p>
+      
+      <!-- Archetype Section -->
+      <div class="w-full bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-xl shadow-2xl p-8 md:p-10 mb-12 text-center -rotate-1 hover:rotate-0 transition-transform duration-300">
+        <h2 class="text-lg uppercase tracking-widest mb-2 opacity-80">Your Personality Archetype</h2>
+        <h3 class="text-4xl md:text-5xl font-bold mb-4">{{ an.archetype.name }}</h3>
+        <p class="max-w-3xl mx-auto text-indigo-100 text-lg">{{ an.archetype.description }}</p>
+      </div>
+
+      <!-- Strengths and Growth Areas -->
+      <div class="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 text-left">
+        <div class="bg-white dark:bg-slate-800/50 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-6">
+          <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center">
+             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-8 w-8 mr-3 text-green-500"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25Zm.53 5.47a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 1 0 1.06 1.06l1.72-1.72v5.69a.75.75 0 0 0 1.5 0v-5.69l1.72 1.72a.75.75 0 1 0 1.06-1.06l-3-3Z" clip-rule="evenodd" /></svg>
+            Your Core Strengths
+          </h3>
+          <div class="space-y-4">
+            @for (strength of an.strengths; track strength.name) {
+              <div>
+                <h4 class="font-semibold text-slate-700 dark:text-slate-200">{{ strength.name }}</h4>
+                <p class="text-slate-500 dark:text-slate-400">{{ strength.description }}</p>
+              </div>
+            }
+          </div>
+        </div>
+        <div class="bg-white dark:bg-slate-800/50 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-6">
+          <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-8 w-8 mr-3 text-amber-500"><path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" /><path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" /></svg>
+            Areas for Growth
+          </h3>
+          <div class="space-y-4">
+            @for (area of an.growthAreas; track area.name) {
+              <div>
+                <h4 class="font-semibold text-slate-700 dark:text-slate-200">{{ area.name }}</h4>
+                <p class="text-slate-500 dark:text-slate-400">{{ area.description }}</p>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Analysis Section -->
+      <div class="w-full bg-white dark:bg-slate-800/50 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 md:p-8 mb-12">
+        <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-6 text-left">Your Personality Profile</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+          <div class="w-full">
+            @if (traitScores(); as scores) {
+              <app-radar-chart [chartData]="scores" />
+            }
+          </div>
+          <div class="text-left space-y-4">
+            @for (trait of explainedTraits(); track trait.name) {
+              <div>
+                <h4 class="font-bold text-lg text-indigo-600 dark:text-indigo-400">{{ trait.name }}</h4>
+                <p class="text-slate-600 dark:text-slate-300">{{ trait.description }}</p>
+              </div>
+            }
+          </div>
+        </div>
+        <div class="mt-8 text-left">
+           <h3 class="font-semibold text-slate-700 dark:text-slate-200 mb-2">AI Prompt Summary:</h3>
+           <blockquote class="p-4 bg-slate-100 dark:bg-slate-800 border-l-4 border-indigo-500 italic text-slate-600 dark:text-slate-300 text-sm max-h-40 overflow-y-auto">
+              <pre class="whitespace-pre-wrap font-sans">{{ personalityProfile() }}</pre>
+           </blockquote>
+        </div>
+        <div class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 text-left">
+          <h3 class="font-semibold text-slate-700 dark:text-slate-200 mb-3">Share Your Profile</h3>
+          <div class="flex items-center gap-4">
+            <button (click)="shareOnTwitter()" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>
+              <span>Twitter</span>
+            </button>
+            <button (click)="shareOnLinkedIn()" class="inline-flex items-center gap-2 bg-[#0077B5] hover:bg-[#005E92] text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path></svg>
+              <span>LinkedIn</span>
+            </button>
+            @if(isLoggedIn() && resultSaved()) {
+              <span class="text-sm font-medium text-green-600 dark:text-green-400 flex items-center gap-1.5 ml-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.208Z" clip-rule="evenodd" /></svg>
+                Saved to profile
+              </span>
+            }
+          </div>
+        </div>
+      </div>
+
+       <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-8">AI-Powered Career Suggestions</h2>
+      
+      <div class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
+        @for (suggestion of an.suggestions; track suggestion.career) {
+          <div (click)="viewCareerDetails(suggestion)" class="bg-white dark:bg-slate-800 rounded-xl shadow-md flex flex-col group transition-all duration-300 border border-slate-200 dark:border-slate-700 hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-600 hover:-translate-y-1 cursor-pointer">
+            <div class="p-6 flex-grow flex flex-col relative">
+              <div class="absolute top-3 right-3">
+                 <label class="flex items-center space-x-2 cursor-pointer text-xs text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400">
+                    <input type="checkbox"
+                           (click)="toggleCompare(suggestion, $event)"
+                           [disabled]="careersToCompare().length >= 3 && !careersToCompare().includes(suggestion)"
+                           class="form-checkbox h-4 w-4 rounded text-indigo-600 bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-600 focus:ring-indigo-500 disabled:opacity-50">
+                    <span>Compare</span>
+                </label>
+              </div>
+              <h3 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mb-2 pr-16">{{ suggestion.career }}</h3>
+              <p class="text-slate-600 dark:text-slate-300 text-sm mb-4 flex-grow">{{ suggestion.description }}</p>
+              
+              <div class="mt-auto">
+                <div class="w-full text-center bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-semibold py-2 px-4 rounded-lg transition-colors duration-300 hover:bg-indigo-200 dark:hover:bg-indigo-900 group-hover:bg-indigo-600 group-hover:text-white dark:group-hover:bg-indigo-500 dark:group-hover:text-white">
+                  Deep Dive
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (!isLoggedIn()) {
+        <div class="w-full mt-12 p-8 bg-slate-100 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+            <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">Save Your Progress</h3>
+            <p class="text-slate-600 dark:text-slate-300 max-w-2xl mx-auto mb-6">
+                Create a free account to save this result and track your personality profile over time. Discover how you evolve and get new career insights with every test.
+            </p>
+            <a routerLink="/login" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full transition-colors duration-300 shadow-lg">
+                Sign Up for Free
+            </a>
+        </div>
+      }
+
+      <button (click)="onRestart()" class="mt-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full transition-colors duration-300 shadow-lg">
+        Take the Test Again
+      </button>
+    </div>
+  }
+
+  @if (isError()) {
+    <div class="flex flex-col items-center justify-center gap-6 p-8 min-h-[400px] bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <h2 class="text-2xl font-semibold text-red-800 dark:text-red-200">Analysis Failed</h2>
+      <p class="text-red-600 dark:text-red-300 max-w-md text-center">We're sorry, but there was an error communicating with the AI. This could be a temporary issue. Please try again.</p>
+      <div class="flex gap-4 mt-4">
+        <button (click)="onRestart()" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold py-2 px-6 rounded-full transition-colors duration-300">
+          Start Over
+        </button>
+        <button (click)="geminiService.getAnalysisAndSuggestions(personalityProfile())" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full transition-colors duration-300">
+          Try Again
+        </button>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Comparison Floating Bar -->
+@if (careersToCompare().length > 0) {
+  <div class="fixed bottom-6 inset-x-0 flex justify-center z-40">
+      <div class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl shadow-2xl p-4 flex items-center gap-4 border border-slate-200 dark:border-slate-700 animate-fade-in-up">
+          <div class="flex items-center gap-3">
+              <span class="font-semibold text-slate-700 dark:text-slate-200">Comparing:</span>
+              @for (career of careersToCompare(); track career.career) {
+                  <span class="bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-sm font-medium px-3 py-1 rounded-full">{{ career.career }}</span>
+              }
+          </div>
+          <button (click)="startComparison()" [disabled]="careersToCompare().length < 2" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded-lg transition-colors duration-300 disabled:bg-slate-400 disabled:cursor-not-allowed">
+              Compare ({{ careersToCompare().length }}/3)
+          </button>
+      </div>
+  </div>
+}
+
+
+<!-- Career Deep Dive Modal -->
+@if (selectedCareer(); as career) {
+  <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" (click)="closeCareerDetails()">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-2xl mx-4 transform transition-all animate-fade-in-up max-h-[90vh] flex flex-col" (click)="$event.stopPropagation()">
+      <div class="flex-shrink-0 p-6 md:p-8 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 rounded-t-lg">
+        <div class="flex justify-between items-start">
+          <div>
+            <h2 class="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">{{ career.career }}</h2>
+            <p class="text-slate-500 dark:text-slate-400 text-sm mt-1 italic">"{{ career.reasoning }}"</p>
+          </div>
+          <button (click)="closeCareerDetails()" class="p-2 -mr-2 rounded-full text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-y-auto p-6 md:p-8">
+        <div class="space-y-6 text-left">
+
+           <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg">
+            <div class="flex items-start gap-3">
+              <div class="flex-shrink-0 text-indigo-500 dark:text-indigo-400 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M7.493 18.5c-.425 0-.82-.236-.975-.632A7.48 7.48 0 0 1 6 15.375c0-1.845.694-3.51 1.87-4.828A7.48 7.48 0 0 1 9.926 9H10.5v1.5H9.926a6 6 0 0 0-1.274 1.103A6 6 0 0 0 6.75 15.375c0 1.25.398 2.404 1.085 3.368.15.21.2.488.064.732-.137.243-.398.39-.68.39Zm8.507 0c-.425 0-.82-.236-.975-.632a7.48 7.48 0 0 1-.493-2.493c0-1.845.694-3.51 1.87-4.828A7.48 7.48 0 0 1 18.426 9H19V7.5h-.574a7.48 7.48 0 0 0-2.056 1.547A7.48 7.48 0 0 0 14.25 13.5c0 1.25.398 2.404 1.085 3.368.15.21.2.488.064.732-.137.243-.398.39-.68.39Z" /></svg></div>
+              <div>
+                <h4 class="font-bold text-slate-800 dark:text-slate-100">An Echo from Your Future...</h4>
+                @if(testimonials().get(career.career); as testimonial) {
+                  @switch(testimonial.state) {
+                    @case('loading') { <div class="h-16 w-full bg-slate-200 dark:bg-slate-700 animate-pulse rounded-md mt-1"></div> }
+                    @case('success') { <p class="text-slate-600 dark:text-slate-300 text-sm mt-1 italic">"{{ testimonial.content }}"</p> }
+                    @case('error') { <p class="text-red-500 text-sm mt-1">{{ testimonial.content }}</p> }
+                  }
+                }
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 text-indigo-500 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.647c1.295.742 1.295 2.545 0 3.286L7.279 20.99c-1.25.717-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" /></svg></div>
+            <div>
+              <h4 class="font-bold text-slate-800 dark:text-slate-100">A Day in the Life</h4>
+              <p class="text-slate-600 dark:text-slate-300 text-sm whitespace-pre-wrap">{{ career.dayInTheLife }}</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 text-indigo-500 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M9 4.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-1.5 0V5.25A.75.75 0 0 1 9 4.5Zm6.75 3a.75.75 0 0 0-1.5 0v10.5a.75.75 0 0 0 1.5 0V7.5Z" clip-rule="evenodd" /></svg></div>
+            <div>
+              <h4 class="font-bold text-slate-800 dark:text-slate-100">Key Skills</h4>
+              <ul class="flex flex-wrap gap-2 mt-2">
+                @for (skill of career.requiredSkills; track skill) {
+                  <li class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium px-2.5 py-1 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3 h-3 text-green-500"><path fill-rule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.208Z" clip-rule="evenodd" /></svg>
+                    {{ skill }}
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
+          
+          <div class="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg">
+            <div class="flex items-start gap-3">
+              <div class="flex-shrink-0 text-amber-500 dark:text-amber-400 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.752a3 3 0 0 1-2.598 4.5H4.644a3 3 0 0 1-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd" /></svg></div>
+              <div>
+                <h4 class="font-bold text-slate-800 dark:text-slate-100">Potential Challenges</h4>
+                <ul class="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-300 text-sm mt-1">
+                  @for (challenge of career.potentialChallenges; track challenge) {
+                    <li>{{ challenge }}</li>
+                  }
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+            <div class="flex items-start gap-3">
+              <div class="flex-shrink-0 text-green-500 dark:text-green-400 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.035-.84-1.875-1.875-1.875h-.75ZM9.75 8.625c0-1.035.84-1.875 1.875-1.875h.75c1.035 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75c-1.035 0-1.875-.84-1.875-1.875V8.625ZM3 13.125c0-1.035.84-1.875 1.875-1.875h.75c1.035 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 0 1 3 19.875v-6.75Z" /></svg></div>
+              <div>
+                <h4 class="font-bold text-slate-800 dark:text-slate-100">Growth Opportunities</h4>
+                <p class="text-slate-600 dark:text-slate-300 text-sm mt-1">{{ career.growthOpportunities }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- NEW: Learning Path -->
+          <div class="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-lg">
+            <div class="flex items-start gap-3">
+              <div class="flex-shrink-0 text-indigo-500 dark:text-indigo-400 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M11.25 4.533A9.707 9.707 0 0 0 6 3a9.735 9.735 0 0 0-3.25.555.75.75 0 0 0-.5.707v14.25a.75.75 0 0 0 1 .707A9.716 9.716 0 0 0 6 21a9.707 9.707 0 0 0 5.25-1.533.75.75 0 0 0 0-1.327 7.22 7.22 0 0 1-3.25-5.64.75.75 0 0 1 .75-.75h.008a7.217 7.217 0 0 1 3.25 5.64.75.75 0 0 0 0 1.327 9.707 9.707 0 0 0 5.25 1.533 9.716 9.716 0 0 0 2.75-1.805.75.75 0 0 0 1-.707V4.262a.75.75 0 0 0-.5-.707A9.735 9.735 0 0 0 18 3a9.707 9.707 0 0 0-5.25 1.533.75.75 0 0 0 0 1.327 7.22 7.22 0 0 1 3.25 5.64.75.75 0 0 1-.75.75h-.008a7.217 7.217 0 0 1-3.25-5.64.75.75 0 0 0 0-1.327Z" /></svg></div>
+              <div class="flex-1">
+                <h4 class="font-bold text-slate-800 dark:text-slate-100">Personalized Learning Path</h4>
+                @switch(learningPath().state) {
+                  @case('idle') {
+                    <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">Get an AI-generated, step-by-step guide to gain the skills needed for this role.</p>
+                    <button (click)="generateLearningPath()" class="mt-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-semibold py-1.5 px-3 rounded-md text-sm">Generate Path</button>
+                  }
+                  @case('loading') {
+                    <div class="space-y-3 mt-2 animate-pulse">
+                      <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
+                      <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
+                      <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mt-2"></div>
+                      <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
+                    </div>
+                  }
+                  @case('error') {
+                    <p class="text-red-500 text-sm mt-1">Could not generate a learning path. Please try again.</p>
+                     <button (click)="generateLearningPath()" class="mt-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-semibold py-1.5 px-3 rounded-md text-sm">Retry</button>
+                  }
+                  @case('success') {
+                    <ol class="mt-2 space-y-3">
+                      @for(step of learningPath().data; track step.step) {
+                        <li class="text-sm">
+                          <p class="font-semibold text-slate-700 dark:text-slate-200">{{step.step}}. {{step.title}}</p>
+                          <p class="text-slate-500 dark:text-slate-400 pl-4">{{step.description}}</p>
+                          <p class="text-slate-500 dark:text-slate-400 pl-4"><strong class="text-indigo-600 dark:text-indigo-400">Resource:</strong> {{step.suggestedResource}}</p>
+                        </li>
+                      }
+                    </ol>
+                  }
+                }
+              </div>
+            </div>
+          </div>
+          
+          <!-- NEW: AI Interview Prep -->
+          <div class="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-lg">
+            <div class="flex items-start gap-3">
+              <div class="flex-shrink-0 text-indigo-500 dark:text-indigo-400 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd" /></svg></div>
+              <div class="flex-1">
+                <h4 class="font-bold text-slate-800 dark:text-slate-100">AI Interview Prep</h4>
+                 @switch(interviewQuestions().state) {
+                  @case('idle') {
+                    <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">Generate tailored interview questions and tips based on your personality and this role.</p>
+                    <button (click)="generateInterviewQuestions()" class="mt-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-semibold py-1.5 px-3 rounded-md text-sm">Generate Questions</button>
+                  }
+                  @case('loading') {
+                    <div class="space-y-4 mt-2 animate-pulse">
+                      <div class="h-5 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
+                      <div class="h-5 bg-slate-200 dark:bg-slate-700 rounded w-5/6"></div>
+                      <div class="h-5 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
+                    </div>
+                  }
+                  @case('error') {
+                     <p class="text-red-500 text-sm mt-1">Could not generate questions. Please try again.</p>
+                     <button (click)="generateInterviewQuestions()" class="mt-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-semibold py-1.5 px-3 rounded-md text-sm">Retry</button>
+                  }
+                  @case('success') {
+                    <div class="mt-2 space-y-2">
+                      @for(q of interviewQuestions().data; track q.question) {
+                        <details class="text-sm group">
+                          <summary class="font-semibold text-slate-700 dark:text-slate-200 list-none cursor-pointer flex items-center gap-2">
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4 text-indigo-500 group-open:rotate-90 transition-transform"><path fill-rule="evenodd" d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>
+                            <span>{{ q.question }}</span>
+                          </summary>
+                          <div class="mt-1 pl-6 py-2 border-l-2 border-indigo-200 dark:border-indigo-800">
+                            <p class="text-slate-500 dark:text-slate-400"><strong class="text-indigo-600 dark:text-indigo-400">Pro Tip:</strong> {{ q.proTip }}</p>
+                          </div>
+                        </details>
+                      }
+                    </div>
+                  }
+                 }
+              </div>
+            </div>
+          </div>
+          
+          <!-- NEW: Career Simulation Challenge -->
+          <div class="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-lg">
+            <div class="flex items-start gap-3">
+              <div class="flex-shrink-0 text-indigo-500 dark:text-indigo-400 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M12 2.25a.75.75 0 0 1 .75.75v.54l1.543-.926a.75.75 0 0 1 1.057.25l1.085 1.878a.75.75 0 0 1-.42 1.002l-1.565.782a.75.75 0 0 0 0 1.344l1.565.783a.75.75 0 0 1 .42 1.002l-1.085 1.878a.75.75 0 0 1-1.057.25l-1.543-.926v.54a.75.75 0 0 1-1.5 0v-.54l-1.543.926a.75.75 0 0 1-1.057-.25l-1.085-1.878a.75.75 0 0 1 .42-1.002l1.565-.782a.75.75 0 0 0 0-1.344L5.57 7.73a.75.75 0 0 1-.42-1.002L6.235 4.85a.75.75 0 0 1 1.057-.25l1.543.926v-.54a.75.75 0 0 1 .75-.75Zm-2.672 9.155a.75.75 0 0 0 0 1.344l.808.404a.75.75 0 0 1 .42 1.002l-.542.94a.75.75 0 0 0 .529 1.302l.983-.28a.75.75 0 0 1 .865.448l.385.964a.75.75 0 0 0 1.38-.552l-.385-.964a.75.75 0 0 1 .865-.448l.983.28a.75.75 0 0 0 .529-1.302l-.543-.94a.75.75 0 0 1 .42-1.002l.808-.404a.75.75 0 0 0 0-1.344l-.808-.404a.75.75 0 0 1-.42-1.002l.543-.94a.75.75 0 0 0-.529-1.302l-.983.28a.75.75 0 0 1-.865-.448l-.385-.964a.75.75 0 0 0-1.38.552l.385.964a.75.75 0 0 1-.865.448l-.983-.28a.75.75 0 0 0-.529 1.302l.543.94a.75.75 0 0 1-.42 1.002l-.808.404Z" /></svg></div>
+              <div class="flex-1">
+                <h4 class="font-bold text-slate-800 dark:text-slate-100">Career Simulation Challenge</h4>
+                 @switch(careerSimulation().state) {
+                  @case('idle') {
+                    <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">Test your decision-making in a realistic workplace scenario tailored to this career.</p>
+                    <button (click)="generateCareerSimulation()" class="mt-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-semibold py-1.5 px-3 rounded-md text-sm">Start Simulation</button>
+                  }
+                  @case('loading') {
+                    <div class="space-y-4 mt-2 animate-pulse">
+                      <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
+                      <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-5/6"></div>
+                      <div class="h-8 bg-slate-200 dark:bg-slate-700 rounded w-full mt-3"></div>
+                      <div class="h-8 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
+                    </div>
+                  }
+                  @case('error') {
+                     <p class="text-red-500 text-sm mt-1">Could not generate the simulation. Please try again.</p>
+                     <button (click)="generateCareerSimulation()" class="mt-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-semibold py-1.5 px-3 rounded-md text-sm">Retry</button>
+                  }
+                  @case('success') {
+                    @if(careerSimulation().data; as sim) {
+                      <div class="text-sm mt-2">
+                        <p class="font-semibold text-slate-700 dark:text-slate-200">Scenario:</p>
+                        <p class="text-slate-600 dark:text-slate-300 mb-4">{{ sim.scenario }}</p>
+                        <p class="font-semibold text-slate-700 dark:text-slate-200 mb-2">Your choice:</p>
+                        <div class="space-y-2">
+                          @for(option of sim.options; track option.text) {
+                            <button 
+                              (click)="selectSimulationOption(option)"
+                              [disabled]="!!selectedSimulationOption()"
+                              [class]="{
+                                'ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/50': selectedSimulationOption() === option,
+                                'hover:bg-slate-100 dark:hover:bg-slate-700/50': !selectedSimulationOption()
+                              }"
+                              class="w-full text-left p-3 border border-slate-200 dark:border-slate-700 rounded-md transition-colors duration-200 disabled:cursor-not-allowed">
+                              {{ option.text }}
+                            </button>
+                          }
+                        </div>
+
+                        @if(selectedSimulationOption(); as selected) {
+                          <div class="mt-4 p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg animate-fade-in">
+                            <p><strong class="text-indigo-600 dark:text-indigo-400">Outcome:</strong> {{ selected.outcome }}</p>
+                            <p class="mt-2 text-slate-500 dark:text-slate-400 italic"><strong class="text-slate-600 dark:text-slate-300 not-italic">Feedback:</strong> {{ selected.feedback }}</p>
+                            <button (click)="generateCareerSimulation()" class="mt-3 text-xs bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-semibold py-1 px-2.5 rounded-md">Try Another Scenario</button>
+                          </div>
+                        }
+                      </div>
+                    }
+                  }
+                 }
+              </div>
+            </div>
+          </div>
+
+           <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 text-indigo-500 mt-0.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M12.97 3.97a.75.75 0 0 1 1.06 0l7.5 7.5a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 1 1-1.06-1.06l6.22-6.22H3a.75.75 0 0 1 0-1.5h16.19l-6.22-6.22a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div>
+            <div>
+              <h4 class="font-bold text-slate-800 dark:text-slate-100">Suggested First Steps</h4>
+              <ul class="list-decimal list-inside space-y-2 text-slate-600 dark:text-slate-300 text-sm mt-2">
+                @for (step of career.suggestedFirstSteps; track step) {
+                  <li>{{ step }}</li>
+                }
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Career Comparison Modal -->
+@if (showComparisonModal()) {
+  <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" (click)="closeComparisonModal()">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-6xl mx-4 transform transition-all animate-fade-in-up max-h-[90vh] flex flex-col" (click)="$event.stopPropagation()">
+      <div class="flex-shrink-0 p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 rounded-t-lg">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">Career Comparison</h2>
+          <button (click)="closeComparisonModal()" class="p-2 -mr-2 rounded-full text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+      </div>
+      <div class="overflow-y-auto p-6 md:p-8">
+        @switch (comparisonState()) {
+          @case ('loading') {
+            <div class="flex flex-col items-center justify-center gap-4 p-8 min-h-[300px]">
+              <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600"></div>
+              <h3 class="text-xl font-semibold text-slate-700 dark:text-slate-200">AI is analyzing your options...</h3>
+            </div>
+          }
+          @case ('error') {
+            <div class="flex flex-col items-center justify-center gap-4 p-8 min-h-[300px] text-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <h3 class="text-xl font-semibold text-red-700 dark:text-red-200">Comparison Failed</h3>
+              <p class="text-slate-500 dark:text-slate-400">Could not generate comparison. Please try again later.</p>
+            </div>
+          }
+          @case ('success') {
+            @if(comparisonData(); as data) {
+            <div class="grid grid-cols-1 gap-6" [class]="'md:grid-cols-' + data.length">
+              @for (comp of data; track comp.careerName) {
+                <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 text-left border border-slate-200 dark:border-slate-700 space-y-4">
+                  <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100">{{ comp.careerName }}</h3>
+                  
+                  <div>
+                    <h4 class="font-semibold text-sm text-indigo-600 dark:text-indigo-400 mb-1">Personality Fit: {{ comp.personalityFit.score }}/10</h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ comp.personalityFit.explanation }}</p>
+                  </div>
+
+                  <div>
+                    <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-200 mb-1">Skill Overlap</h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400"><strong class="text-green-600 dark:text-green-400">Natural:</strong> {{ comp.skillOverlap.naturalSkills.join(', ') }}</p>
+                     <p class="text-xs text-slate-500 dark:text-slate-400"><strong class="text-amber-600 dark:text-amber-400">To Develop:</strong> {{ comp.skillOverlap.skillsToDevelop.join(', ') }}</p>
+                  </div>
+
+                  <div>
+                    <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-200 mb-1">Long-Term Potential</h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ comp.longTermPotential }}</p>
+                  </div>
+
+                  <div>
+                    <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-200 mb-1">Work-Life Balance</h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ comp.workLifeBalance }}</p>
+                  </div>
+                </div>
+              }
+            </div>
+            }
+          }
+        }
+      </div>
+    </div>
+  </div>
+}
