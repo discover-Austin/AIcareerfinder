@@ -20,7 +20,10 @@
     "@angular/build": "^20.3.0",
     "@angular/cli": "^20.3.0",
     "@angular/compiler-cli": "^20.3.0",
-    "tailwindcss": "latest"
+    "tailwindcss": "latest",
+    "@stripe/stripe-js": "^8.1.0",
+    "jspdf": "^2.5.2",
+    "html2canvas": "^1.4.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

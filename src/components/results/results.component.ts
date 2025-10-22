@@ -5,6 +5,8 @@ import { CareerSuggestion, ExplainedTrait, TraitScoreData, FullAnalysis, CareerC
 import { GeminiState, GeminiService } from '../../services/gemini.service';
 import { AuthService } from '../../services/auth.service';
 import { SubscriptionService } from '../../services/subscription.service';
+import { PdfExportService } from '../../services/pdf-export.service';
+import { AnalyticsService } from '../../services/analytics.service';
 import { RadarChartComponent } from '../radar-chart/radar-chart.component';
 import { PaywallModalComponent } from '../paywall-modal/paywall-modal.component';
 
@@ -25,6 +27,8 @@ export class ResultsComponent implements OnDestroy {
 
   private authService = inject(AuthService);
   private subscriptionService = inject(SubscriptionService);
+  private pdfExportService = inject(PdfExportService);
+  private analyticsService = inject(AnalyticsService);
   geminiService = inject(GeminiService);
 
   selectedCareer = signal<CareerSuggestion | null>(null);
@@ -292,16 +296,35 @@ export class ResultsComponent implements OnDestroy {
     this.showPaywall.set(false);
   }
 
-  exportToPDF(): void {
+  async exportToPDF(): Promise<void> {
     if (!this.hasPdfExportAccess()) {
+      this.analyticsService.trackPaywallShown('pdf_export');
       this.paywallTitle.set('Unlock PDF Export');
       this.paywallMessage.set('Download a professional PDF report of your complete career analysis.');
       this.showPaywall.set(true);
       return;
     }
 
-    // TODO: Implement PDF export functionality
-    alert('PDF export feature coming soon!');
+    const analysis = this.analysis();
+    const profile = this.personalityProfile();
+    const user = this.authService.currentUser();
+
+    if (!analysis) {
+      alert('No analysis available to export');
+      return;
+    }
+
+    try {
+      this.analyticsService.trackPDFExport();
+      await this.pdfExportService.exportAnalysisToPDF(
+        analysis,
+        profile,
+        user?.name
+      );
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      alert('Failed to generate PDF. Please try again.');
+    }
   }
 
   ngOnDestroy(): void {

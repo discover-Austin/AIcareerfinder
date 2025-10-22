@@ -1,5 +1,7 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { AuthService } from './auth.service';
+import { StripeService } from './stripe.service';
+import { AnalyticsService } from './analytics.service';
 import {
   SubscriptionTier,
   SubscriptionPlan,
@@ -14,6 +16,8 @@ import {
 })
 export class SubscriptionService {
   private authService = inject(AuthService);
+  private stripeService = inject(StripeService);
+  private analyticsService = inject(AnalyticsService);
 
   // Computed subscription tier from current user
   currentTier = computed<SubscriptionTier>(() => {
@@ -106,19 +110,55 @@ export class SubscriptionService {
     return diffDays;
   }
 
-  // Mock: Upgrade subscription (in real app, this would call Stripe)
-  upgradeSubscription(planId: string): Promise<{ success: boolean; message: string }> {
+  // Upgrade subscription using Stripe
+  async upgradeSubscription(planId: string): Promise<{ success: boolean; message: string }> {
+    const user = this.authService.currentUser();
+    if (!user) {
+      return { success: false, message: 'Please log in to upgrade' };
+    }
+
+    const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId);
+    if (!plan) {
+      return { success: false, message: 'Invalid plan selected' };
+    }
+
+    // Track upgrade initiation
+    this.analyticsService.trackUpgradeInitiated(plan.name, plan.price);
+
+    // Check if Stripe is configured
+    if (!this.stripeService.isConfigured()) {
+      console.warn('Stripe not configured, using mock upgrade');
+      // Fallback to mock for development
+      return this.mockUpgrade(plan);
+    }
+
+    // Use Stripe for real payment processing
+    const result = await this.stripeService.createCheckoutSession(plan, user.email);
+
+    if (result.success) {
+      this.analyticsService.trackUpgradeCompleted(plan.name, plan.price);
+
+      // Note: In production, subscription will be created via webhook
+      // after successful payment, not here
+      return {
+        success: true,
+        message: `Redirecting to secure checkout...`,
+      };
+    }
+
+    return {
+      success: false,
+      message: result.error || 'Failed to initiate checkout',
+    };
+  }
+
+  // Mock upgrade for development (when Stripe is not configured)
+  private mockUpgrade(plan: SubscriptionPlan): Promise<{ success: boolean; message: string }> {
     return new Promise((resolve) => {
       setTimeout(() => {
         const user = this.authService.currentUser();
         if (!user) {
           resolve({ success: false, message: 'Please log in to upgrade' });
-          return;
-        }
-
-        const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId);
-        if (!plan) {
-          resolve({ success: false, message: 'Invalid plan selected' });
           return;
         }
 
@@ -135,32 +175,35 @@ export class SubscriptionService {
         };
 
         this.authService.updateUserSubscription(newSubscription);
+        this.analyticsService.trackUpgradeCompleted(plan.name, plan.price);
+        this.analyticsService.setUserSubscriptionTier(plan.tier);
+
         resolve({ success: true, message: `Successfully upgraded to ${plan.name}!` });
       }, 1000);
     });
   }
 
-  // Mock: Cancel subscription
-  cancelSubscription(): Promise<{ success: boolean; message: string }> {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const user = this.authService.currentUser();
-        const subscription = user?.subscription;
+  // Cancel subscription
+  async cancelSubscription(): Promise<{ success: boolean; message: string }> {
+    const user = this.authService.currentUser();
+    const subscription = user?.subscription;
 
-        if (!subscription) {
-          resolve({ success: false, message: 'No active subscription found' });
-          return;
-        }
+    if (!subscription) {
+      return { success: false, message: 'No active subscription found' };
+    }
 
-        subscription.cancelAtPeriodEnd = true;
-        this.authService.updateUserSubscription(subscription);
+    // Track cancellation
+    this.analyticsService.trackSubscriptionCanceled(subscription.planId);
 
-        resolve({
-          success: true,
-          message: `Your subscription will remain active until ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`,
-        });
-      }, 1000);
-    });
+    // TODO: In production, call backend API to cancel Stripe subscription
+    // For now, just update local state
+    subscription.cancelAtPeriodEnd = true;
+    this.authService.updateUserSubscription(subscription);
+
+    return {
+      success: true,
+      message: `Your subscription will remain active until ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`,
+    };
   }
 
   // Mock: Reactivate canceled subscription
