@@ -7,10 +7,13 @@
        routerLinkActive="text-indigo-600 dark:text-indigo-400 font-semibold" 
        [routerLinkActiveOptions]="{exact: true}"
        class="text-sm font-medium text-slate-600 dark:text-slate-300 transition-all duration-300 ease-in-out hover:text-indigo-600 dark:hover:text-indigo-400 hover:-translate-y-0.5">Home</a>
-    <a routerLink="/about" 
+    <a routerLink="/about"
        routerLinkActive="text-indigo-600 dark:text-indigo-400 font-semibold"
        class="text-sm font-medium text-slate-600 dark:text-slate-300 transition-all duration-300 ease-in-out hover:text-indigo-600 dark:hover:text-indigo-400 hover:-translate-y-0.5">About</a>
-    
+    <a routerLink="/pricing"
+       routerLinkActive="text-indigo-600 dark:text-indigo-400 font-semibold"
+       class="text-sm font-medium text-slate-600 dark:text-slate-300 transition-all duration-300 ease-in-out hover:text-indigo-600 dark:hover:text-indigo-400 hover:-translate-y-0.5">Pricing</a>
+
     @if (authService.currentUser(); as user) {
       <a routerLink="/profile" 
         routerLinkActive="text-indigo-600 dark:text-indigo-400 font-semibold"

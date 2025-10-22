@@ -4,16 +4,18 @@ import { RouterLink } from '@angular/router';
 import { CareerSuggestion, ExplainedTrait, TraitScoreData, FullAnalysis, CareerComparison, LearningStep, InterviewQuestion, CareerSimulation, SimulationOption } from '../../models/personality-test.model';
 import { GeminiState, GeminiService } from '../../services/gemini.service';
 import { AuthService } from '../../services/auth.service';
+import { SubscriptionService } from '../../services/subscription.service';
 import { RadarChartComponent } from '../radar-chart/radar-chart.component';
+import { PaywallModalComponent } from '../paywall-modal/paywall-modal.component';
 
 @Component({
   selector: 'app-results',
   standalone: true,
-  imports: [CommonModule, RadarChartComponent, RouterLink],
+  imports: [CommonModule, RadarChartComponent, RouterLink, PaywallModalComponent],
   templateUrl: './results.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ResultsComponent {
+export class ResultsComponent implements OnDestroy {
   analysis = input.required<FullAnalysis | null>();
   state = input.required<GeminiState>();
   personalityProfile = input.required<string>();
@@ -22,10 +24,16 @@ export class ResultsComponent {
   restart = output<void>();
 
   private authService = inject(AuthService);
+  private subscriptionService = inject(SubscriptionService);
   geminiService = inject(GeminiService);
 
   selectedCareer = signal<CareerSuggestion | null>(null);
   resultSaved = signal(false);
+
+  // Paywall state
+  showPaywall = signal(false);
+  paywallTitle = signal('Upgrade to Premium');
+  paywallMessage = signal('This feature is available for Premium subscribers.');
 
   // Comparison State
   careersToCompare = signal<CareerSuggestion[]>([]);
@@ -46,6 +54,24 @@ export class ResultsComponent {
   isSuccess = computed(() => this.state() === 'success' && this.analysis() !== null);
   isError = computed(() => this.state() === 'error');
   isLoggedIn = computed(() => !!this.authService.currentUser());
+
+  // Subscription access
+  hasDetailedAccess = computed(() => this.subscriptionService.hasAccess('detailedCareerInfo'));
+  hasComparisonAccess = computed(() => this.subscriptionService.hasAccess('careerComparison'));
+  hasLearningPathAccess = computed(() => this.subscriptionService.hasAccess('learningPaths'));
+  hasInterviewPrepAccess = computed(() => this.subscriptionService.hasAccess('interviewPrep'));
+  hasSimulationAccess = computed(() => this.subscriptionService.hasAccess('careerSimulation'));
+  hasPdfExportAccess = computed(() => this.subscriptionService.hasAccess('pdfExport'));
+  currentTier = computed(() => this.subscriptionService.currentTier());
+
+  // Limit career suggestions based on tier
+  displayedCareerSuggestions = computed(() => {
+    const analysis = this.analysis();
+    if (!analysis) return [];
+    const maxSuggestions = this.subscriptionService.featureAccess().maxCareerSuggestions;
+    if (maxSuggestions === -1) return analysis.suggestions;
+    return analysis.suggestions.slice(0, maxSuggestions);
+  });
 
   // Enhanced loading state
   private loadingMessages = [
@@ -96,13 +122,21 @@ export class ResultsComponent {
   }
 
   viewCareerDetails(suggestion: CareerSuggestion): void {
+    // Check if user has access to detailed career info
+    if (!this.hasDetailedAccess()) {
+      this.paywallTitle.set('Unlock Detailed Career Insights');
+      this.paywallMessage.set('Get full access to day-in-the-life scenarios, required skills, growth opportunities, and personalized insights.');
+      this.showPaywall.set(true);
+      return;
+    }
+
     this.selectedCareer.set(suggestion);
     // Reset new feature states
     this.learningPath.set({ state: 'idle', data: null });
     this.interviewQuestions.set({ state: 'idle', data: null });
     this.careerSimulation.set({ state: 'idle', data: null });
     this.selectedSimulationOption.set(null);
-    
+
     const careerName = suggestion.career;
     // Fetch testimonial if not already fetched
     if (!this.testimonials().has(careerName)) {
@@ -137,6 +171,13 @@ export class ResultsComponent {
   }
 
   async startComparison(): Promise<void> {
+    if (!this.hasComparisonAccess()) {
+      this.paywallTitle.set('Unlock Career Comparison');
+      this.paywallMessage.set('Compare careers side-by-side to find the perfect fit for your personality.');
+      this.showPaywall.set(true);
+      return;
+    }
+
     if (this.careersToCompare().length < 2) return;
     this.showComparisonModal.set(true);
     this.comparisonState.set('loading');
@@ -168,6 +209,13 @@ export class ResultsComponent {
   }
 
   async generateLearningPath(): Promise<void> {
+    if (!this.hasLearningPathAccess()) {
+      this.paywallTitle.set('Unlock Personalized Learning Paths');
+      this.paywallMessage.set('Get step-by-step guidance with curated resources to develop the skills you need.');
+      this.showPaywall.set(true);
+      return;
+    }
+
     if (!this.selectedCareer() || !this.analysis()) return;
     this.learningPath.set({ state: 'loading', data: null });
 
@@ -188,6 +236,13 @@ export class ResultsComponent {
   }
 
   async generateInterviewQuestions(): Promise<void> {
+    if (!this.hasInterviewPrepAccess()) {
+      this.paywallTitle.set('Unlock Interview Preparation');
+      this.paywallMessage.set('Get personality-specific interview questions and expert tips to ace your interviews.');
+      this.showPaywall.set(true);
+      return;
+    }
+
     if (!this.selectedCareer() || !this.analysis()) return;
     this.interviewQuestions.set({ state: 'loading', data: null });
 
@@ -205,6 +260,13 @@ export class ResultsComponent {
   }
 
   async generateCareerSimulation(): Promise<void> {
+    if (!this.hasSimulationAccess()) {
+      this.paywallTitle.set('Unlock Career Simulations');
+      this.paywallMessage.set('Experience realistic workplace scenarios and get personalized feedback on your decisions.');
+      this.showPaywall.set(true);
+      return;
+    }
+
     if (!this.selectedCareer() || !this.analysis()) return;
     this.careerSimulation.set({ state: 'loading', data: null });
     this.selectedSimulationOption.set(null);
@@ -224,5 +286,25 @@ export class ResultsComponent {
 
   selectSimulationOption(option: SimulationOption): void {
     this.selectedSimulationOption.set(option);
+  }
+
+  closePaywall(): void {
+    this.showPaywall.set(false);
+  }
+
+  exportToPDF(): void {
+    if (!this.hasPdfExportAccess()) {
+      this.paywallTitle.set('Unlock PDF Export');
+      this.paywallMessage.set('Download a professional PDF report of your complete career analysis.');
+      this.showPaywall.set(true);
+      return;
+    }
+
+    // TODO: Implement PDF export functionality
+    alert('PDF export feature coming soon!');
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.loadingInterval);
   }
 }

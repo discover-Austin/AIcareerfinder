@@ -1,0 +1,104 @@
+<!-- Modal Backdrop -->
+<div
+  *ngIf="isOpen()"
+  (click)="onBackdropClick($event)"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm"
+  [@fadeIn]
+>
+  <!-- Modal Content -->
+  <div
+    class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all"
+    [@slideIn]
+  >
+    <!-- Header with gradient -->
+    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-8 text-white relative">
+      <button
+        (click)="onClose()"
+        class="absolute top-4 right-4 text-white hover:text-gray-200 transition-colors"
+        aria-label="Close modal"
+      >
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+
+      <div class="flex items-center justify-center mb-4">
+        <svg class="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+          ></path>
+        </svg>
+      </div>
+
+      <h3 class="text-2xl font-bold text-center">{{ title() }}</h3>
+      <p class="mt-2 text-center text-indigo-100">{{ message() }}</p>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-6">
+      <div class="mb-6">
+        <p class="text-gray-700 font-semibold mb-3">Unlock premium features:</p>
+        <ul class="space-y-2">
+          <li *ngFor="let feature of features()" class="flex items-start">
+            <svg class="h-6 w-6 text-green-500 flex-shrink-0 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="text-gray-700">{{ feature }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Pricing Preview -->
+      <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 mb-6">
+        <div class="flex items-baseline justify-center">
+          <span class="text-3xl font-extrabold text-gray-900">\$14.99</span>
+          <span class="ml-1 text-gray-600">/month</span>
+        </div>
+        <p class="text-center text-sm text-gray-600 mt-1">or \$149/year (save 17%)</p>
+      </div>
+
+      <!-- CTA Buttons -->
+      <div class="space-y-3">
+        <a
+          routerLink="/pricing"
+          (click)="onClose()"
+          class="w-full flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+        >
+          View Pricing & Upgrade
+        </a>
+        <button
+          (click)="onClose()"
+          class="w-full px-6 py-3 text-base font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          Maybe Later
+        </button>
+      </div>
+
+      <!-- Trust Badge -->
+      <div class="mt-6 pt-6 border-t border-gray-200">
+        <div class="flex items-center justify-center space-x-4 text-sm text-gray-500">
+          <div class="flex items-center">
+            <svg class="h-5 w-5 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Cancel anytime
+          </div>
+          <div class="flex items-center">
+            <svg class="h-5 w-5 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              ></path>
+            </svg>
+            Secure payment
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
