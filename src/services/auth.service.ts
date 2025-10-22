@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { User, UserResult } from '../models/user.model';
 import { FullAnalysis } from '../models/personality-test.model';
+import { UserSubscription } from '../models/subscription.model';
 
 @Injectable({
   providedIn: 'root',
@@ -48,6 +49,8 @@ export class AuthService {
       email,
       password, // In a real app, hash and salt this password
       results: [],
+      testsTaken: 0,
+      createdAt: new Date().toISOString(),
     };
 
     users.push(newUser);
@@ -110,6 +113,36 @@ export class AuthService {
       localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
     } catch (e) {
       console.error('Error saving users to localStorage:', e);
+    }
+  }
+
+  updateUserSubscription(subscription: UserSubscription): void {
+    const user = this.currentUser();
+    if (!user) return;
+
+    user.subscription = subscription;
+
+    const users = this.getUsers();
+    const userIndex = users.findIndex(u => u.id === user.id);
+    if (userIndex > -1) {
+      users[userIndex] = user;
+      this.saveUsers(users);
+      this.currentUser.set({ ...user });
+    }
+  }
+
+  incrementTestCount(): void {
+    const user = this.currentUser();
+    if (!user) return;
+
+    user.testsTaken = (user.testsTaken || 0) + 1;
+
+    const users = this.getUsers();
+    const userIndex = users.findIndex(u => u.id === user.id);
+    if (userIndex > -1) {
+      users[userIndex] = user;
+      this.saveUsers(users);
+      this.currentUser.set({ ...user });
     }
   }
 }
