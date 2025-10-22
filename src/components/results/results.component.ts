@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, output, computed, signal, effect, untracked, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, computed, signal, effect, untracked, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CareerSuggestion, ExplainedTrait, TraitScoreData, FullAnalysis, CareerComparison, LearningStep, InterviewQuestion, CareerSimulation, SimulationOption } from '../../models/personality-test.model';
