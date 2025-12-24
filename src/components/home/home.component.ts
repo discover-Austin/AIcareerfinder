@@ -4,9 +4,9 @@ import { QuestionComponent } from '../question/question.component';
 import { ResultsComponent } from '../results/results.component';
 import { GeminiService } from '../../services/gemini.service';
 import { Question, UserAnswer, TraitScoreData, ExplainedTrait, FullAnalysis, AnswerOption } from '../../models/personality-test.model';
+import { QUIZ_SCORING, QUIZ_ANIMATIONS, QUIZ_STATE } from '../../config/quiz.constants';
 
 type AppState = 'start' | 'quiz' | 'results';
-const QUIZ_STATE_KEY = 'personalityQuizState_v2';
 
 interface Archetype {
     type: string;
@@ -38,7 +38,7 @@ export class HomeComponent implements OnDestroy {
   questionAnimationState = signal<'enter' | 'leave'>('enter');
   showRestartConfirmation = signal(false);
   pillarCompletionMessage = signal<string | null>(null);
-  private messageTimer: any;
+  private messageTimer: ReturnType<typeof setTimeout> | null = null;
 
   // prettier-ignore
   private ARCHETYPES: Record<string, Archetype> = {
@@ -67,58 +67,58 @@ export class HomeComponent implements OnDestroy {
   private questionBank: Record<string, Question[]> = {
     mind: [ // Introvert (-) vs Extrovert (+)
       { id: 1, text: 'After a social event, you feel:', type: 'multiple-choice', traitKey: 'mind', options: [
-        { text: 'Drained and in need of solitude', effects: { mind: -20 } },
-        { text: 'A little tired, but generally content', effects: { mind: -5 } },
-        { text: 'Energized and ready for more', effects: { mind: 20 } },
+        { text: 'Drained and in need of solitude', effects: { mind: -QUIZ_SCORING.STRONG_EFFECT } },
+        { text: 'A little tired, but generally content', effects: { mind: -QUIZ_SCORING.MILD_EFFECT } },
+        { text: 'Energized and ready for more', effects: { mind: QUIZ_SCORING.STRONG_EFFECT } },
       ]},
       { id: 2, text: 'In a group discussion, you are more likely to:', type: 'multiple-choice', traitKey: 'mind', options: [
-        { text: 'Speak up frequently with your ideas', effects: { mind: 15 } },
-        { text: 'Listen carefully and speak when you have a well-formed thought', effects: { mind: -15 } },
+        { text: 'Speak up frequently with your ideas', effects: { mind: QUIZ_SCORING.MODERATE_EFFECT } },
+        { text: 'Listen carefully and speak when you have a well-formed thought', effects: { mind: -QUIZ_SCORING.MODERATE_EFFECT } },
       ]},
       { id: 3, text: 'My ideal weekend involves more:', type: 'slider', traitKey: 'mind', labels: ['Quiet time for myself', 'Activities with other people'] },
     ],
     energy: [ // Observant (-) vs Intuitive (+)
       { id: 4, text: 'When learning something new, you prefer:', type: 'multiple-choice', traitKey: 'energy', options: [
-        { text: 'Practical, hands-on experience', effects: { energy: -20 } },
-        { text: 'Exploring the underlying theories and concepts', effects: { energy: 20 } },
+        { text: 'Practical, hands-on experience', effects: { energy: -QUIZ_SCORING.STRONG_EFFECT } },
+        { text: 'Exploring the underlying theories and concepts', effects: { energy: QUIZ_SCORING.STRONG_EFFECT } },
       ]},
       { id: 5, text: 'You are more interested in:', type: 'multiple-choice', traitKey: 'energy', options: [
-        { text: 'The reality of how things work now', effects: { energy: -15 } },
-        { text: 'The possibilities of what things could be', effects: { energy: 15 } },
+        { text: 'The reality of how things work now', effects: { energy: -QUIZ_SCORING.MODERATE_EFFECT } },
+        { text: 'The possibilities of what things could be', effects: { energy: QUIZ_SCORING.MODERATE_EFFECT } },
       ]},
       { id: 6, text: 'I tend to focus on:', type: 'slider', traitKey: 'energy', labels: ['Concrete details', 'Abstract ideas'] },
     ],
     nature: [ // Thinking (-) vs Feeling (+)
       { id: 7, text: 'When making a decision, you prioritize:', type: 'multiple-choice', traitKey: 'nature', options: [
-        { text: 'Logic, efficiency, and objective truth', effects: { nature: -20 } },
-        { text: 'Harmony, empathy, and the impact on people', effects: { nature: 20 } },
+        { text: 'Logic, efficiency, and objective truth', effects: { nature: -QUIZ_SCORING.STRONG_EFFECT } },
+        { text: 'Harmony, empathy, and the impact on people', effects: { nature: QUIZ_SCORING.STRONG_EFFECT } },
       ]},
       { id: 8, text: 'When a friend is upset, your first instinct is to:', type: 'multiple-choice', traitKey: 'nature', options: [
-        { text: 'Offer emotional support and understanding', effects: { nature: 15 } },
-        { text: 'Help them analyze the problem and find a solution', effects: { nature: -15 } },
+        { text: 'Offer emotional support and understanding', effects: { nature: QUIZ_SCORING.MODERATE_EFFECT } },
+        { text: 'Help them analyze the problem and find a solution', effects: { nature: -QUIZ_SCORING.MODERATE_EFFECT } },
       ]},
       { id: 9, text: 'My decision-making is guided more by:', type: 'slider', traitKey: 'nature', labels: ['My head', 'My heart'] },
     ],
     tactics: [ // Judging (-) vs Prospecting (+)
       { id: 10, text: 'When it comes to plans, you:', type: 'multiple-choice', traitKey: 'tactics', options: [
-        { text: 'Prefer to have a detailed plan and stick to it', effects: { tactics: -20 } },
-        { text: 'See a plan as a rough guideline that can change', effects: { tactics: 10 } },
-        { text: 'Prefer to keep your options open and be spontaneous', effects: { tactics: 20 } },
+        { text: 'Prefer to have a detailed plan and stick to it', effects: { tactics: -QUIZ_SCORING.STRONG_EFFECT } },
+        { text: 'See a plan as a rough guideline that can change', effects: { tactics: QUIZ_SCORING.MODERATE_EFFECT / 1.5 } },
+        { text: 'Prefer to keep your options open and be spontaneous', effects: { tactics: QUIZ_SCORING.STRONG_EFFECT } },
       ]},
       { id: 11, text: 'Which word describes you better?', type: 'image-choice', traitKey: 'tactics', options: [
-          { text: 'Organized', effects: { tactics: -20 }, imageUrl: 'https://picsum.photos/id/183/400/300' }, 
-          { text: 'Spontaneous', effects: { tactics: 20 }, imageUrl: 'https://picsum.photos/id/1015/400/300' }
+          { text: 'Organized', effects: { tactics: -QUIZ_SCORING.STRONG_EFFECT }, imageUrl: 'https://picsum.photos/id/183/400/300' },
+          { text: 'Spontaneous', effects: { tactics: QUIZ_SCORING.STRONG_EFFECT }, imageUrl: 'https://picsum.photos/id/1015/400/300' }
       ]},
       { id: 12, text: 'I prefer my work to be:', type: 'slider', traitKey: 'tactics', labels: ['Scheduled and structured', 'Flexible and adaptable'] },
     ],
     identity: [ // Assertive (-) vs Turbulent (+)
       { id: 13, text: 'When facing a challenge, you are more likely to feel:', type: 'multiple-choice', traitKey: 'identity', options: [
-        { text: 'Confident and self-assured in your abilities', effects: { identity: -20 } },
-        { text: 'Anxious and worried about the outcome', effects: { identity: 20 } },
+        { text: 'Confident and self-assured in your abilities', effects: { identity: -QUIZ_SCORING.STRONG_EFFECT } },
+        { text: 'Anxious and worried about the outcome', effects: { identity: QUIZ_SCORING.STRONG_EFFECT } },
       ]},
       { id: 14, text: 'After making a decision, you tend to:', type: 'multiple-choice', traitKey: 'identity', options: [
-        { text: 'Feel confident in your choice', effects: { identity: -15 } },
-        { text: 'Frequently second-guess yourself', effects: { identity: 15 } },
+        { text: 'Feel confident in your choice', effects: { identity: -QUIZ_SCORING.MODERATE_EFFECT } },
+        { text: 'Frequently second-guess yourself', effects: { identity: QUIZ_SCORING.MODERATE_EFFECT } },
       ]},
       { id: 15, text: 'I am generally:', type: 'slider', traitKey: 'identity', labels: ['Calm and relaxed', 'Prone to worry'] },
     ],
@@ -135,7 +135,9 @@ export class HomeComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    clearTimeout(this.messageTimer);
+    if (this.messageTimer) {
+      clearTimeout(this.messageTimer);
+    }
   }
 
   confirmExit(event: BeforeUnloadEvent) {
@@ -185,7 +187,7 @@ export class HomeComponent implements OnDestroy {
 
   nextQuestion(): void {
     this.questionAnimationState.set('leave');
-    
+
     setTimeout(() => {
       if (this.currentQuestionIndex() < this.questions().length - 1) {
         const currentQ = this.currentQuestion();
@@ -195,8 +197,10 @@ export class HomeComponent implements OnDestroy {
         if (currentQ.traitKey !== nextQ.traitKey && this.questionBank[currentQ.traitKey]) {
             const pillarName = currentQ.traitKey.charAt(0).toUpperCase() + currentQ.traitKey.slice(1);
             this.pillarCompletionMessage.set(`${pillarName} section complete!`);
-            clearTimeout(this.messageTimer);
-            this.messageTimer = setTimeout(() => this.pillarCompletionMessage.set(null), 3500);
+            if (this.messageTimer) {
+              clearTimeout(this.messageTimer);
+            }
+            this.messageTimer = setTimeout(() => this.pillarCompletionMessage.set(null), QUIZ_ANIMATIONS.COMPLETION_MESSAGE_DURATION);
         }
 
         this.currentQuestionIndex.update(i => i + 1);
@@ -204,7 +208,7 @@ export class HomeComponent implements OnDestroy {
         this.showResults();
       }
       this.questionAnimationState.set('enter');
-    }, 300);
+    }, QUIZ_ANIMATIONS.TRANSITION_DURATION);
   }
 
   showResults(): void {
@@ -217,7 +221,7 @@ export class HomeComponent implements OnDestroy {
     
     this.appState.set('results');
     this.geminiService.getAnalysisAndSuggestions(this.personalityProfile());
-    localStorage.removeItem(QUIZ_STATE_KEY);
+    localStorage.removeItem(QUIZ_STATE.STORAGE_KEY);
   }
   
   restartTest(): void { this.showRestartConfirmation.set(true); }
@@ -229,16 +233,16 @@ export class HomeComponent implements OnDestroy {
     this.questions.set([]);
     this.geminiService.state.set('idle');
     this.geminiService.analysis.set(null);
-    localStorage.removeItem(QUIZ_STATE_KEY);
+    localStorage.removeItem(QUIZ_STATE.STORAGE_KEY);
   }
   cancelRestart(): void { this.showRestartConfirmation.set(false); }
 
   private saveProgress(): void {
     const state = { questions: this.questions(), answers: this.userAnswers(), questionIndex: this.currentQuestionIndex() };
-    localStorage.setItem(QUIZ_STATE_KEY, JSON.stringify(state));
+    localStorage.setItem(QUIZ_STATE.STORAGE_KEY, JSON.stringify(state));
   }
   private loadProgress(): void {
-    const savedStateJSON = localStorage.getItem(QUIZ_STATE_KEY);
+    const savedStateJSON = localStorage.getItem(QUIZ_STATE.STORAGE_KEY);
     if (savedStateJSON) {
       try {
         const savedState = JSON.parse(savedStateJSON);
@@ -248,10 +252,10 @@ export class HomeComponent implements OnDestroy {
           this.currentQuestionIndex.set(savedState.questionIndex);
           this.appState.set('quiz');
         } else {
-           localStorage.removeItem(QUIZ_STATE_KEY);
+           localStorage.removeItem(QUIZ_STATE.STORAGE_KEY);
         }
       } catch (e) {
-        localStorage.removeItem(QUIZ_STATE_KEY);
+        localStorage.removeItem(QUIZ_STATE.STORAGE_KEY);
       }
     }
   }
@@ -280,20 +284,19 @@ export class HomeComponent implements OnDestroy {
             });
         } else if (q.type === 'slider') {
             const key = q.traitKey as keyof PersonalityDimensions;
-            const sliderEffect = 20; // Max effect for a slider question
-            maxScores[key] += sliderEffect;
+            maxScores[key] += QUIZ_SCORING.SLIDER_MAX_EFFECT;
             if (answer && typeof answer.value === 'number') {
-                // Normalize slider 0-100 to a score from -sliderEffect to +sliderEffect
-                scores[key] += ((answer.value - 50) / 50) * sliderEffect;
+                // Normalize slider 0-100 to a score from -SLIDER_MAX_EFFECT to +SLIDER_MAX_EFFECT
+                scores[key] += ((answer.value - QUIZ_SCORING.SLIDER_NEUTRAL) / QUIZ_SCORING.SLIDER_NEUTRAL) * QUIZ_SCORING.SLIDER_MAX_EFFECT;
             }
         }
     });
 
-    // Normalize final scores to be between -100 and 100
+    // Normalize final scores to be between -NORMALIZATION_RANGE and +NORMALIZATION_RANGE
     Object.keys(scores).forEach(dim => {
         const key = dim as keyof PersonalityDimensions;
         if (maxScores[key] > 0) {
-            scores[key] = (scores[key] / maxScores[key]) * 100;
+            scores[key] = (scores[key] / maxScores[key]) * QUIZ_SCORING.NORMALIZATION_RANGE;
         }
     });
 

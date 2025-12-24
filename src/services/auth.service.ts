@@ -3,6 +3,32 @@ import { User, UserResult } from '../models/user.model';
 import { FullAnalysis } from '../models/personality-test.model';
 import { UserSubscription } from '../models/subscription.model';
 
+/**
+ * ⚠️ DEVELOPMENT ONLY - NOT PRODUCTION READY ⚠️
+ *
+ * CRITICAL SECURITY ISSUES:
+ * 1. Passwords stored in PLAINTEXT in localStorage
+ * 2. No password hashing or encryption
+ * 3. Data only persisted in localStorage (not secure, cleared on browser clear)
+ * 4. No session expiration or timeout
+ * 5. No CSRF/XSS protection
+ * 6. No rate limiting on login attempts
+ * 7. User data exposed in browser storage
+ *
+ * FOR PRODUCTION, YOU MUST:
+ * - Implement proper backend authentication server
+ * - Use bcrypt/argon2 for password hashing (12+ rounds)
+ * - Store user data in secure database (PostgreSQL, MongoDB, etc.)
+ * - Implement JWT tokens with httpOnly cookies
+ * - Add session management with expiration
+ * - Use HTTPS only
+ * - Implement rate limiting and account lockout
+ * - Add email verification
+ * - Implement password reset flow
+ * - Add multi-factor authentication (optional but recommended)
+ *
+ * This implementation is ONLY suitable for local development and testing.
+ */
 @Injectable({
   providedIn: 'root',
 })
@@ -47,7 +73,7 @@ export class AuthService {
       id: crypto.randomUUID(),
       name,
       email,
-      password, // In a real app, hash and salt this password
+      password, // ⚠️ CRITICAL: Password stored in plaintext - NOT PRODUCTION READY
       results: [],
       testsTaken: 0,
       createdAt: new Date().toISOString(),
@@ -62,6 +88,7 @@ export class AuthService {
     const users = this.getUsers();
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
+    // ⚠️ CRITICAL: Direct password comparison - NO HASHING - NOT PRODUCTION READY
     if (!user || user.password !== password) {
       return { success: false, message: 'Invalid email or password.' };
     }

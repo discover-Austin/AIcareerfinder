@@ -4,6 +4,40 @@ import { FullAnalysis, CareerSuggestion, CareerComparison, LearningStep, Intervi
 
 export type GeminiState = 'idle' | 'loading' | 'success' | 'error';
 
+/**
+ * ⚠️ SECURITY WARNING - NOT PRODUCTION READY ⚠️
+ *
+ * CRITICAL ISSUES:
+ * 1. API KEY EXPOSED IN FRONTEND CODE
+ *    - Environment variables in frontend builds are PUBLIC
+ *    - Anyone can extract the API key from the bundled JavaScript
+ *    - API key can be used to make unauthorized requests
+ *    - Could lead to unexpected charges on your API account
+ *
+ * 2. NO RATE LIMITING
+ *    - No protection against API abuse
+ *    - No request throttling
+ *
+ * 3. NO ERROR RETRY LOGIC
+ *    - Transient failures not handled
+ *    - Poor user experience
+ *
+ * FOR PRODUCTION, YOU MUST:
+ * - Move ALL API calls to a backend server
+ * - Store API keys server-side only (never in frontend)
+ * - Implement backend API endpoints that call Gemini
+ * - Add authentication to backend endpoints
+ * - Implement rate limiting (per user/IP)
+ * - Add request validation and sanitization
+ * - Implement retry logic with exponential backoff
+ * - Add request logging and monitoring
+ * - Set up API usage alerts
+ *
+ * RECOMMENDED ARCHITECTURE:
+ * Frontend -> Your Backend API (with auth) -> Gemini API (with server-side key)
+ *
+ * This implementation is ONLY suitable for local development and testing.
+ */
 @Injectable({
   providedIn: 'root',
 })
@@ -13,8 +47,10 @@ export class GeminiService {
   public analysis = signal<FullAnalysis | null>(null);
 
   constructor() {
-    // IMPORTANT: This relies on the `process.env.API_KEY` being set in the execution environment.
-    // Do not hardcode API keys.
+    // ⚠️ CRITICAL SECURITY ISSUE:
+    // Environment variables in FRONTEND builds are PUBLICLY ACCESSIBLE
+    // Anyone can extract this API key from the bundled JavaScript
+    // FOR PRODUCTION: Move API calls to backend server with server-side API key
     if (!process.env.API_KEY) {
       console.error('API_KEY environment variable not set.');
       this.state.set('error');
