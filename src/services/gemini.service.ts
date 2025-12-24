@@ -1,6 +1,8 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
 import { GoogleGenAI, Type, GenerateContentResponse } from '@google/genai';
 import { FullAnalysis, CareerSuggestion, CareerComparison, LearningStep, InterviewQuestion, CareerSimulation } from '../models/personality-test.model';
+import { ErrorHandlerService } from './error-handler.service';
+import { retryWithBackoff } from '../utils/retry.util';
 
 export type GeminiState = 'idle' | 'loading' | 'success' | 'error';
 
@@ -18,9 +20,9 @@ export type GeminiState = 'idle' | 'loading' | 'success' | 'error';
  *    - No protection against API abuse
  *    - No request throttling
  *
- * 3. NO ERROR RETRY LOGIC
- *    - Transient failures not handled
- *    - Poor user experience
+ * 3. ERROR RETRY LOGIC - ✅ NOW IMPLEMENTED
+ *    - Retry logic with exponential backoff added
+ *    - Error handling service integrated
  *
  * FOR PRODUCTION, YOU MUST:
  * - Move ALL API calls to a backend server
@@ -29,8 +31,8 @@ export type GeminiState = 'idle' | 'loading' | 'success' | 'error';
  * - Add authentication to backend endpoints
  * - Implement rate limiting (per user/IP)
  * - Add request validation and sanitization
- * - Implement retry logic with exponential backoff
- * - Add request logging and monitoring
+ * - ✅ Retry logic with exponential backoff (IMPLEMENTED)
+ * - ✅ Request logging and monitoring (IMPLEMENTED)
  * - Set up API usage alerts
  *
  * RECOMMENDED ARCHITECTURE:
@@ -43,6 +45,8 @@ export type GeminiState = 'idle' | 'loading' | 'success' | 'error';
 })
 export class GeminiService {
   private ai: GoogleGenAI;
+  private errorHandler = inject(ErrorHandlerService);
+
   public state = signal<GeminiState>('idle');
   public analysis = signal<FullAnalysis | null>(null);
 
@@ -143,15 +147,26 @@ export class GeminiService {
             },
             required: ["archetype", "strengths", "growthAreas", "suggestions"]
           },
-        },
-      });
+        }),
+        {
+          maxRetries: 3,
+          initialDelay: 1000,
+          onRetry: (attempt, delay) => {
+            console.log(`Retrying analysis request (attempt ${attempt}) after ${delay}ms...`);
+          },
+        }
+      );
 
       const jsonString = response.text.trim();
       const fullAnalysis = JSON.parse(jsonString);
       this.analysis.set(fullAnalysis);
       this.state.set('success');
     } catch (error) {
-      console.error('Error fetching analysis from Gemini API:', error);
+      // Use centralized error handler
+      this.errorHandler.handleApiError(error, 'Personality Analysis');
+      this.errorHandler.logError(error, 'getAnalysisAndSuggestions', {
+        profileLength: personalityProfile.length,
+      });
       this.state.set('error');
     }
   }
@@ -173,45 +188,54 @@ export class GeminiService {
     `;
 
     try {
-        const response: GenerateContentResponse = await this.ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            careerName: { type: Type.STRING },
-                            personalityFit: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    score: { type: Type.INTEGER, description: "Score from 1 to 10" },
-                                    explanation: { type: Type.STRING }
-                                },
-                                required: ["score", "explanation"]
-                            },
-                            skillOverlap: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    naturalSkills: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                    skillsToDevelop: { type: Type.ARRAY, items: { type: Type.STRING } }
-                                },
-                                required: ["naturalSkills", "skillsToDevelop"]
-                            },
-                            longTermPotential: { type: Type.STRING },
-                            workLifeBalance: { type: Type.STRING }
-                        },
-                        required: ["careerName", "personalityFit", "skillOverlap", "longTermPotential", "workLifeBalance"]
-                    }
-                }
-            }
-        });
+        const response: GenerateContentResponse = await retryWithBackoff(
+          async () => await this.ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: prompt,
+              config: {
+                  responseMimeType: 'application/json',
+                  responseSchema: {
+                      type: Type.ARRAY,
+                      items: {
+                          type: Type.OBJECT,
+                          properties: {
+                              careerName: { type: Type.STRING },
+                              personalityFit: {
+                                  type: Type.OBJECT,
+                                  properties: {
+                                      score: { type: Type.INTEGER, description: "Score from 1 to 10" },
+                                      explanation: { type: Type.STRING }
+                                  },
+                                  required: ["score", "explanation"]
+                              },
+                              skillOverlap: {
+                                  type: Type.OBJECT,
+                                  properties: {
+                                      naturalSkills: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                      skillsToDevelop: { type: Type.ARRAY, items: { type: Type.STRING } }
+                                  },
+                                  required: ["naturalSkills", "skillsToDevelop"]
+                              },
+                              longTermPotential: { type: Type.STRING },
+                              workLifeBalance: { type: Type.STRING }
+                          },
+                          required: ["careerName", "personalityFit", "skillOverlap", "longTermPotential", "workLifeBalance"]
+                      }
+                  }
+              }
+          }),
+          {
+            maxRetries: 2,
+            initialDelay: 1000,
+          }
+        );
         const jsonString = response.text.trim();
         return JSON.parse(jsonString) as CareerComparison[];
     } catch (error) {
-        console.error('Error fetching career comparison from Gemini API:', error);
+        this.errorHandler.handleApiError(error, 'Career Comparison');
+        this.errorHandler.logError(error, 'getCareerComparison', {
+          careerCount: careers.length,
+        });
         return null;
     }
   }
@@ -222,13 +246,23 @@ export class GeminiService {
         The tone should be authentic, encouraging, and reflect the core traits of the archetype. It should touch upon why the career is a good fit for their personality, perhaps mentioning how they overcame a typical challenge for their type in this role. Do not use quotation marks around the entire text.
       `;
       try {
-        const response: GenerateContentResponse = await this.ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
+        const response: GenerateContentResponse = await retryWithBackoff(
+          async () => await this.ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: prompt,
+          }),
+          {
+            maxRetries: 2,
+            initialDelay: 1000,
+          }
+        );
         return response.text.trim();
       } catch (error) {
-        console.error('Error fetching testimonial from Gemini API:', error);
+        this.errorHandler.handleApiError(error, 'Career Testimonial');
+        this.errorHandler.logError(error, 'getCareerTestimonial', {
+          archetypeName,
+          careerName,
+        });
         return null;
       }
   }
@@ -242,30 +276,41 @@ export class GeminiService {
       Return the response as a valid JSON array.
     `;
     try {
-      const response: GenerateContentResponse = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                step: { type: Type.INTEGER },
-                title: { type: Type.STRING },
-                description: { type: Type.STRING },
-                suggestedResource: { type: Type.STRING }
-              },
-              required: ["step", "title", "description", "suggestedResource"]
+      const response: GenerateContentResponse = await retryWithBackoff(
+        async () => await this.ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  step: { type: Type.INTEGER },
+                  title: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                  suggestedResource: { type: Type.STRING }
+                },
+                required: ["step", "title", "description", "suggestedResource"]
+              }
             }
           }
+        }),
+        {
+          maxRetries: 2,
+          initialDelay: 1000,
         }
-      });
+      );
       const jsonString = response.text.trim();
       return JSON.parse(jsonString) as LearningStep[];
     } catch (error) {
-      console.error('Error fetching learning path from Gemini API:', error);
+      this.errorHandler.handleApiError(error, 'Learning Path');
+      this.errorHandler.logError(error, 'getLearningPath', {
+        archetypeName,
+        careerName,
+        skillsCount: skillsToDevelop.length,
+      });
       return null;
     }
   }
@@ -281,28 +326,39 @@ export class GeminiService {
       Return the response as a valid JSON array.
     `;
     try {
-      const response: GenerateContentResponse = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                question: { type: Type.STRING },
-                proTip: { type: Type.STRING }
-              },
-              required: ["question", "proTip"]
+      const response: GenerateContentResponse = await retryWithBackoff(
+        async () => await this.ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  question: { type: Type.STRING },
+                  proTip: { type: Type.STRING }
+                },
+                required: ["question", "proTip"]
+              }
             }
           }
+        }),
+        {
+          maxRetries: 2,
+          initialDelay: 1000,
         }
-      });
+      );
       const jsonString = response.text.trim();
       return JSON.parse(jsonString) as InterviewQuestion[];
     } catch (error) {
-      console.error('Error fetching interview questions from Gemini API:', error);
+      this.errorHandler.handleApiError(error, 'Interview Questions');
+      this.errorHandler.logError(error, 'getInterviewQuestions', {
+        archetypeName,
+        careerName,
+        growthAreasCount: growthAreas.length,
+      });
       return null;
     }
   }
@@ -321,36 +377,47 @@ export class GeminiService {
     `;
 
     try {
-      const response: GenerateContentResponse = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              scenario: { type: Type.STRING },
-              options: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    text: { type: Type.STRING },
-                    outcome: { type: Type.STRING },
-                    feedback: { type: Type.STRING },
-                  },
-                  required: ["text", "outcome", "feedback"]
+      const response: GenerateContentResponse = await retryWithBackoff(
+        async () => await this.ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                scenario: { type: Type.STRING },
+                options: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      text: { type: Type.STRING },
+                      outcome: { type: Type.STRING },
+                      feedback: { type: Type.STRING },
+                    },
+                    required: ["text", "outcome", "feedback"]
+                  }
                 }
-              }
-            },
-            required: ["scenario", "options"]
+              },
+              required: ["scenario", "options"]
+            }
           }
+        }),
+        {
+          maxRetries: 2,
+          initialDelay: 1000,
         }
-      });
+      );
       const jsonString = response.text.trim();
       return JSON.parse(jsonString) as CareerSimulation;
     } catch (error) {
-      console.error('Error fetching career simulation from Gemini API:', error);
+      this.errorHandler.handleApiError(error, 'Career Simulation');
+      this.errorHandler.logError(error, 'getCareerSimulation', {
+        archetypeName,
+        careerName,
+        growthAreasCount: growthAreas.length,
+      });
       return null;
     }
   }
