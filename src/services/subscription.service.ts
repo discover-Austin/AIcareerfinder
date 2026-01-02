@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { AuthService } from './auth.service';
 import { StripeService } from './stripe.service';
 import { AnalyticsService } from './analytics.service';
+import { UI_TIMINGS } from '../config/ui.constants';
 import {
   SubscriptionTier,
   SubscriptionPlan,
@@ -179,7 +180,7 @@ export class SubscriptionService {
         this.analyticsService.setUserSubscriptionTier(plan.tier);
 
         resolve({ success: true, message: `Successfully upgraded to ${plan.name}!` });
-      }, 1000);
+      }, UI_TIMINGS.MOCK_API_DELAY);
     });
   }
 
@@ -222,7 +223,7 @@ export class SubscriptionService {
         this.authService.updateUserSubscription(subscription);
 
         resolve({ success: true, message: 'Subscription reactivated successfully!' });
-      }, 1000);
+      }, UI_TIMINGS.MOCK_API_DELAY);
     });
   }
 

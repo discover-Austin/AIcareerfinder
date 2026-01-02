@@ -9,6 +9,7 @@ import { PdfExportService } from '../../services/pdf-export.service';
 import { AnalyticsService } from '../../services/analytics.service';
 import { RadarChartComponent } from '../radar-chart/radar-chart.component';
 import { PaywallModalComponent } from '../paywall-modal/paywall-modal.component';
+import { UI_TIMINGS, UI_LIMITS } from '../../config/ui.constants';
 
 @Component({
   selector: 'app-results',
@@ -87,7 +88,7 @@ export class ResultsComponent implements OnDestroy {
     'Crafting your unique archetype...'
   ];
   currentLoadingMessage = signal(this.loadingMessages[0]);
-  private loadingInterval: any;
+  private loadingInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     effect((onCleanup) => {
@@ -97,9 +98,11 @@ export class ResultsComponent implements OnDestroy {
         this.loadingInterval = setInterval(() => {
           i = (i + 1) % this.loadingMessages.length;
           this.currentLoadingMessage.set(this.loadingMessages[i]);
-        }, 2000);
+        }, UI_TIMINGS.LOADING_MESSAGES_INTERVAL);
       } else {
-        clearInterval(this.loadingInterval);
+        if (this.loadingInterval) {
+          clearInterval(this.loadingInterval);
+        }
       }
 
       // Auto-save result for logged-in user
@@ -110,7 +113,9 @@ export class ResultsComponent implements OnDestroy {
       }
 
       onCleanup(() => {
-        clearInterval(this.loadingInterval);
+        if (this.loadingInterval) {
+          clearInterval(this.loadingInterval);
+        }
       });
     });
   }
@@ -164,10 +169,10 @@ export class ResultsComponent implements OnDestroy {
     event.stopPropagation();
     const isChecked = (event.target as HTMLInputElement).checked;
     if (isChecked) {
-        if (this.careersToCompare().length < 3) {
+        if (this.careersToCompare().length < UI_LIMITS.MAX_CAREERS_TO_COMPARE) {
             this.careersToCompare.update(careers => [...careers, career]);
         } else {
-            (event.target as HTMLInputElement).checked = false; // Prevent checking more than 3
+            (event.target as HTMLInputElement).checked = false; // Prevent checking more than limit
         }
     } else {
         this.careersToCompare.update(careers => careers.filter(c => c.career !== career.career));
@@ -328,6 +333,8 @@ export class ResultsComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    clearInterval(this.loadingInterval);
+    if (this.loadingInterval) {
+      clearInterval(this.loadingInterval);
+    }
   }
 }
